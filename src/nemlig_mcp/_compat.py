@@ -22,9 +22,35 @@ import contextlib
 import sys
 from collections.abc import Iterator
 
+import requests
+
 
 @contextlib.contextmanager
 def quiet() -> Iterator[None]:
     """Route anything the CLI prints to stderr, keeping stdout protocol-clean."""
     with contextlib.redirect_stdout(sys.stderr):
         yield
+
+
+# nemlig_cli calls requests without a timeout, so a stalled nemlig.com
+# connection would hang a tool call forever -- and the retry logic in
+# server.py, which treats timeouts as retryable, would never get the chance.
+# (connect, read) seconds, applied only where the caller passed no timeout.
+DEFAULT_TIMEOUT = (5, 20)
+
+_original_request = requests.Session.request
+
+
+def _request_with_default_timeout(self, method, url, **kwargs):
+    if kwargs.get("timeout") is None:
+        kwargs["timeout"] = DEFAULT_TIMEOUT
+    return _original_request(self, method, url, **kwargs)
+
+
+def install_default_timeout() -> None:
+    """Make every requests.Session in this process time out by default.
+
+    Idempotent. Process-wide on purpose: nemlig_cli builds its own Session
+    inside login(), so there is no instance to configure from outside.
+    """
+    requests.Session.request = _request_with_default_timeout

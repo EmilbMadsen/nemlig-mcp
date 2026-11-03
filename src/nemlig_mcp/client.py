@@ -18,7 +18,9 @@ import nemlig_cli
 import requests
 from nemlig_cli import AuthTokens
 
-from ._compat import quiet
+from ._compat import install_default_timeout, quiet
+
+install_default_timeout()
 
 T = TypeVar("T")
 

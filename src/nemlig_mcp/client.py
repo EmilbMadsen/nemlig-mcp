@@ -8,10 +8,14 @@ case the server expired it early.
 
 from __future__ import annotations
 
+import json
+import logging
 import os
+import stat
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, TypeVar
 
 import nemlig_cli
@@ -28,6 +32,9 @@ T = TypeVar("T")
 # cannot lapse mid-request.
 TOKEN_TTL_SECONDS = 240
 
+CREDENTIALS_FILE_ENV = "NEMLIG_CREDENTIALS_FILE"
+_LOGGER = logging.getLogger(__name__)
+
 
 class CredentialsError(RuntimeError):
     """Raised when no nemlig.com credentials could be found."""
@@ -41,6 +48,25 @@ def _load_credentials() -> tuple[str, str]:
     """
     username = os.environ.get("NEMLIG_USER")
     password = os.environ.get("NEMLIG_PASS")
+
+    # A JSON file such as a Docker secret: {"username": "...", "password": "..."}.
+    credentials_file = os.environ.get(CREDENTIALS_FILE_ENV, "").strip()
+    if credentials_file and not (username and password):
+        path = Path(credentials_file).expanduser()
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise CredentialsError(
+                f"{CREDENTIALS_FILE_ENV} points to {path}, which is not a readable JSON file."
+            ) from exc
+        if os.name == "posix" and path.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            _LOGGER.warning("%s is readable by other users; restrict it with chmod 600", path)
+        if isinstance(data, dict):
+            username = username or data.get("username")
+            password = password or data.get("password")
+        if not (username and password):
+            raise CredentialsError(f"{path} must contain username and password.")
+        return str(username), str(password)
 
     if not (username and password):
         try:

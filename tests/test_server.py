@@ -370,3 +370,17 @@ def test_quiet_keeps_stdout_clean():
         sys.stdout = real_stdout
 
     assert captured.getvalue() == ""
+
+
+def test_requests_get_a_default_timeout_unless_one_is_given():
+    from nemlig_mcp import client  # noqa: F401  -- importing installs the default
+    from nemlig_mcp._compat import DEFAULT_TIMEOUT, _original_request
+
+    seen = []
+    with mock.patch("nemlig_mcp._compat._original_request",
+                    side_effect=lambda self, m, u, **kw: seen.append(kw.get("timeout"))):
+        session = requests.Session()
+        session.get("https://example.invalid/")
+        session.get("https://example.invalid/", timeout=3)
+    assert seen == [DEFAULT_TIMEOUT, 3]
+    assert _original_request is not requests.Session.request

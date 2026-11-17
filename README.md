@@ -138,6 +138,26 @@ Troubleshooting:
 | `ModuleNotFoundError: nemlig_cli` | `uv sync` did not complete — rerun it |
 | Tool calls fail with `HTTPError` | Wrong username/password — nemlig returns 401 from the login endpoint |
 
+## Remote access (optional)
+
+`uv sync --extra remote` (Python 3.13+) adds `nemlig-mcp serve --http`: Streamable HTTP at `/mcp`
+behind single-user OAuth 2.1 (password + TOTP, PKCE, short-lived rotating tokens) from
+[mcp-owner-auth](https://github.com/EmilbMadsen/mcp-owner-auth), so the server can be added as a
+custom connector in claude.ai and used from the Claude mobile app. Self-hosted and single-user
+only. A `Dockerfile` is included.
+
+| Variable / command | Effect |
+|---|---|
+| `NEMLIG_CREDENTIALS_FILE` | JSON file with `username` and `password`, e.g. a Docker secret |
+| `NEMLIG_MCP_PUBLIC_URL` | public base URL, e.g. `https://nemlig.example.com` |
+| `NEMLIG_MCP_STATE_DIR` | where `auth.db` and the audit log live (default `~/.config/nemlig-mcp`) |
+| `NEMLIG_MCP_CLIENT_IP_HEADER` | e.g. `CF-Connecting-IP` behind a Cloudflare Tunnel |
+| `nemlig-mcp auth init` | username, password and TOTP; prints the OAuth client ID and secret once |
+| `nemlig-mcp auth revoke-all` | revokes every token immediately |
+
+The remote server exposes the same tools as stdio, including the basket tools. It still cannot
+place orders or touch payment cards.
+
 ## Relationship to the upstream CLI
 
 Building this surfaced two problems in `nemlig_cli`, both fixed upstream in

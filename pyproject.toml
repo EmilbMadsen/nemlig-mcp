@@ -13,11 +13,17 @@ dependencies = [
     "nemlig-cli @ git+https://github.com/eisbaw/nemlig_cli.git@main",
 ]
 
+[project.optional-dependencies]
+# Streamable HTTP + single-user OAuth for claude.ai (`nemlig-mcp serve --http`). Python 3.13+.
+remote = ["mcp-owner-auth>=0.1.1; python_version >= '3.13'"]
+
 [project.scripts]
 nemlig-mcp = "nemlig_mcp.server:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28",
+    "mcp-owner-auth>=0.1.1; python_version >= '3.13'",
     "pytest>=8.0.0",
 ]
 
